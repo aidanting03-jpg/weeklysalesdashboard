@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WTD Sales — Bounty Segar Indonesia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0A0E14;
+    --bg-elev: #121826;
+    --bg-elev-2: #1A2333;
+    --ink: #F1F4F8;
+    --ink-soft: #9AA7B8;
+    --ink-faint: #647082;
+    --line: rgba(255,255,255,0.07);
+    --line-strong: rgba(255,255,255,0.13);
+    --blue: #5B9CFF;
+    --teal: #2FD9C4;
+    --amber: #FBB93D;
+    --purple: #B18CFF;
+    --pink: #FF7FB4;
+    --pos: #3FD68B;
+    --neg: #FF6B6B;
+    --radius: 10px;
+    --shadow: 0 8px 24px rgba(0,0,0,0.28);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    background-image: radial-gradient(circle at 12% -10%, rgba(91,156,255,0.08), transparent 32%), radial-gradient(circle at 90% 0%, rgba(177,140,255,0.07), transparent 30%);
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-size: 13.5px; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .num { font-family: 'Archivo', system-ui, sans-serif; font-variant-numeric: tabular-nums; font-feature-settings: "tnum" 1; }
+  ::selection { background: rgba(91,156,255,0.28); }
+  a { color: var(--blue); }
+
+  /* ---------- Top bar ---------- */
+  .topbar { position: sticky; top: 0; z-index: 30; background: rgba(10,14,20,0.88); backdrop-filter: blur(12px); border-bottom: 1px solid var(--line); }
+  .topbar-inner { max-width: 1300px; margin: 0 auto; padding: 18px 24px 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .mark { width: 30px; height: 30px; border-radius: 8px; background: linear-gradient(135deg, var(--blue), var(--purple)); display: grid; place-items: center; font-family: 'Archivo', sans-serif; font-weight: 800; font-size: 14px; color: #0A0E14; flex: none; }
+  .brand h1 { font-family: 'Archivo', sans-serif; font-weight: 700; font-size: 17px; margin: 0; letter-spacing: -0.01em; }
+  .brand .sub { color: var(--ink-faint); font-size: 12px; }
+  .status { font-size: 11.5px; color: var(--ink-soft); display: flex; align-items: center; gap: 7px; padding: 6px 12px; border: 1px solid var(--line-strong); border-radius: 20px; background: var(--bg-elev); }
+  .status .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-faint); flex: none; }
+  .status.live .dot { background: var(--pos); box-shadow: 0 0 8px rgba(63,214,139,0.6); }
+  .status.error .dot { background: var(--neg); }
+  .status.loading .dot { background: var(--amber); animation: pulse 1.1s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+  .filterbar { max-width: 1300px; margin: 0 auto; padding: 0 24px 18px; display: flex; gap: 9px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 128px; }
+  .field label { font-size: 10.5px; color: var(--ink-faint); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  .field select, .field input[type=text], .field input[type=url] {
+    font: inherit; font-size: 12.5px; color: var(--ink);
+    background: var(--bg-elev); border: 1px solid var(--line-strong);
+    border-radius: 8px; padding: 9px 10px; min-width: 0; min-height: 38px;
+  }
+  .field select:focus, .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(91,156,255,0.15); }
+  .filterbar .grow { flex: 1 1 160px; }
+  .btn {
+    font: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink-soft);
+    background: var(--bg-elev); border: 1px solid var(--line-strong); border-radius: 8px;
+    padding: 9px 14px; cursor: pointer; height: 38px;
+  }
+  .btn:hover { color: var(--ink); border-color: var(--ink-soft); }
+  .btn.primary { color: #0A0E14; background: linear-gradient(135deg, var(--blue), #7FB4FF); border-color: transparent; font-weight: 700; }
+  .btn.primary:hover { filter: brightness(1.08); }
+
+  /* ---------- Layout ---------- */
+  main { max-width: 1300px; margin: 0 auto; padding: 28px 24px 64px; }
+  section { margin-bottom: 40px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+  .section-head h2 { font-family: 'Archivo', sans-serif; font-weight: 700; font-size: 13px; margin: 0; color: var(--ink); }
+  .section-head .note { font-size: 11.5px; color: var(--ink-faint); }
+
+  .panel { background: var(--bg-elev); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); }
+
+  /* ---------- KPI band ---------- */
+  .kpi-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .kpi-row { grid-template-columns: 1fr; } }
+  .kpi-panel { padding: 20px 22px; }
+  .kpi-panel .kpi-title { font-size: 13px; font-weight: 700; }
+  .kpi-panel .kpi-period { font-size: 11.5px; color: var(--ink-faint); margin: 3px 0 16px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 14px; }
+  @media (max-width: 560px) { .kpi-grid { grid-template-columns: 1fr 1fr; } }
+  .kpi-tile { position: relative; padding-left: 12px; }
+  .kpi-tile::before { content: ""; position: absolute; left: 0; top: 2px; bottom: 2px; width: 3px; border-radius: 3px; background: var(--tile-color, var(--blue)); }
+  .kpi-tile .kpi-label { font-size: 10.5px; color: var(--ink-faint); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .kpi-tile .kpi-value { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+  .kpi-tile .kpi-delta { font-size: 11px; font-weight: 700; margin-top: 4px; display: inline-block; padding: 1px 7px; border-radius: 10px; }
+  .kpi-delta.pos { color: var(--pos); background: rgba(63,214,139,0.12); }
+  .kpi-delta.neg { color: var(--neg); background: rgba(255,107,107,0.12); }
+  .kpi-delta.flat { color: var(--ink-faint); background: rgba(255,255,255,0.05); }
+
+  /* ---------- Charts row ---------- */
+  .chart-row { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 16px; align-items: stretch; }
+  @media (max-width: 1080px) { .chart-row { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 720px) { .chart-row { grid-template-columns: 1fr; } }
+  .chart-panel { padding: 18px 20px 16px; display: flex; flex-direction: column; }
+  .chart-panel .chart-title { font-size: 13px; font-weight: 700; margin-bottom: 14px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--ink); }
+  .chart-panel .chart-title .hint { font-weight: 400; color: var(--ink-faint); font-size: 11px; }
+  .toggle-group { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; }
+  .toggle-group button { font: inherit; font-size: 11px; font-weight: 600; color: var(--ink-faint); background: transparent; border: none; padding: 6px 11px; cursor: pointer; border-right: 1px solid var(--line-strong); }
+  .toggle-group button:last-child { border-right: none; }
+  .toggle-group button.active { background: var(--bg-elev-2); color: var(--ink); }
+  .chart-wrap { position: relative; flex: 1; min-height: 240px; }
+  .chip { display: inline-flex; align-items: center; gap: 9px; margin-bottom: 14px; padding: 6px 12px; border: 1px solid rgba(91,156,255,0.35); background: rgba(91,156,255,0.1); border-radius: 20px; font-size: 11.5px; color: var(--ink); }
+  .chip button { border: none; background: rgba(255,255,255,0.12); color: var(--ink); border-radius: 50%; width: 18px; height: 18px; cursor: pointer; font-size: 10px; line-height: 1; }
+
+  /* ---------- Top customers table ---------- */
+  .table-panel { padding: 4px 0 6px; overflow-x: auto; }
+  table.top10 { width: 100%; border-collapse: collapse; font-size: 12.8px; min-width: 760px; }
+  table.top10 th, table.top10 td { padding: 11px 14px; text-align: right; white-space: nowrap; }
+  table.top10 th:nth-child(1), table.top10 td:nth-child(1) { text-align: left; padding-left: 20px; }
+  table.top10 th:nth-child(2), table.top10 td:nth-child(2) { text-align: left; }
+  table.top10 thead th { font-size: 10.5px; font-weight: 700; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; border-bottom: 1px solid var(--line-strong); cursor: pointer; user-select: none; position: sticky; top: 0; background: var(--bg-elev); }
+  table.top10 thead th:hover { color: var(--ink); }
+  table.top10 thead th.sorted { color: var(--blue); }
+  table.top10 thead th.sorted::after { content: " ▾"; }
+  table.top10 tbody tr { border-bottom: 1px solid var(--line); }
+  table.top10 tbody tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+  table.top10 tbody tr:hover { background: var(--bg-elev-2); }
+  table.top10 td.name { font-weight: 600; }
+  .rank-badge { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: rgba(91,156,255,0.14); color: var(--blue); font-weight: 700; font-size: 11px; }
+  .contrib-bar { display: inline-block; height: 6px; background: linear-gradient(90deg, var(--teal), var(--blue)); border-radius: 3px; vertical-align: middle; margin-right: 8px; }
+  .contrib-cell { display: flex; align-items: center; justify-content: flex-end; }
+
+  /* ---------- Setup / footer ---------- */
+  .setup-banner { background: var(--bg-elev); border: 1px solid var(--line-strong); border-left: 3px solid var(--amber); border-radius: var(--radius); padding: 18px 20px; font-size: 12.5px; margin-bottom: 26px; color: var(--ink-soft); box-shadow: var(--shadow); }
+  .setup-banner h3 { margin: 0 0 8px; font-family: 'Archivo', sans-serif; font-size: 13.5px; color: var(--ink); font-weight: 700; }
+  .setup-banner ol { margin: 8px 0 0; padding-left: 18px; }
+  .setup-banner code { background: var(--bg-elev-2); padding: 1px 5px; border-radius: 4px; font-size: 11.5px; color: var(--ink); }
+  .setup-banner .row { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .setup-banner .row input { flex: 1 1 220px; }
+
+  footer#footerNote { max-width: 1300px; margin: 0 auto; padding: 0 24px 48px; color: var(--ink-faint); font-size: 11px; }
+  .empty-note { padding: 36px 18px; text-align: center; color: var(--ink-faint); font-size: 12.5px; }
+  .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="mark">W</div>
+      <div><h1>WTD Sales</h1><span class="sub">Bounty Segar Indonesia</span></div>
+    </div>
+    <div class="status loading" id="status"><span class="dot"></span><span id="statusText">Connecting…</span></div>
+  </div>
+  <div class="filterbar">
+    <div class="field"><label for="f-month">Month</label><select id="f-month"></select></div>
+    <div class="field"><label for="f-week">Week</label><select id="f-week"></select></div>
+    <div class="field"><label for="f-salesman">Salesman</label><select id="f-salesman"><option value="ALL">All salesmen</option></select></div>
+    <div class="field grow"><label for="f-customer">Customer</label><select id="f-customer"><option value="ALL">All customers</option></select></div>
+    <div class="field grow"><label for="f-item">Item</label><select id="f-item"><option value="ALL">All items</option></select></div>
+    <div class="field"><label for="refreshInterval">Auto-refresh</label>
+      <select id="refreshInterval">
+        <option value="0">Off</option>
+        <option value="300000" selected>5 min</option>
+        <option value="900000">15 min</option>
+      </select>
+    </div>
+    <button class="btn primary" id="reloadBtn" type="button">Reload</button>
+    <button class="btn" id="loadCsvBtn" type="button">Load CSV…</button>
+    <input type="file" id="csvFile" accept=".csv" class="visually-hidden">
+  </div>
+</div>
+
+<main>
+
+  <div class="setup-banner" id="setupBanner" style="display:none;">
+    <h3>Connect to the Database tab</h3>
+    <p id="errorText">This dashboard reads the <strong>Database</strong> tab of <strong>00 - Main Data</strong> live,
+      the same way Google Sheets previews data internally. It needs that sheet's sharing set to
+      <strong>"Anyone with the link — Viewer"</strong>, or your team signed into an account with access.</p>
+    <ol>
+      <li>Open <strong>00 - Main Data</strong> → <code>Share</code> → set general access to "Anyone with the link" (Viewer),
+        or confirm your team already has access.</li>
+      <li>Paste the spreadsheet ID below (the long string in its URL between <code>/d/</code> and <code>/edit</code>) and click Reload.</li>
+    </ol>
+    <div class="row">
+      <input type="text" id="sheetIdInput" placeholder="Spreadsheet ID for 00 - Main Data">
+      <input type="text" id="sheetNameInput" placeholder="Tab name (default: Database)">
+    </div>
+    <p style="margin:12px 0 4px;">Prefer not to change sharing at all? Two other options:</p>
+    <div class="row">
+      <input type="url" id="webAppUrl" placeholder="Apps Script Web App URL (returns Database rows as JSON)">
+      <button class="btn" id="saveWebApp" type="button">Use Web App</button>
+    </div>
+    <p style="margin:8px 0 0; font-size:11.5px;">Or click <strong>Load CSV…</strong> above — export the Database tab
+      as .csv (File → Download → .csv) any time you want to refresh, no publishing required.</p>
+  </div>
+
+  <section>
+    <div class="section-head"><h2>Performance vs. prior period</h2><span class="note" id="kpiNote"></span></div>
+    <div class="kpi-row">
+      <div class="panel kpi-panel">
+        <div class="kpi-title">Month-end</div>
+        <div class="kpi-period" id="monthPeriodLabel">—</div>
+        <div class="kpi-grid" id="monthKpis"></div>
+      </div>
+      <div class="panel kpi-panel">
+        <div class="kpi-title">Week-to-date</div>
+        <div class="kpi-period" id="weekPeriodLabel">—</div>
+        <div class="kpi-grid" id="weekKpis"></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Daily behavior, selected week</h2></div>
+    <div class="chart-row">
+      <div class="panel chart-panel">
+        <div class="chart-title">
+          <span id="trendTitle">Volume by day</span>
+          <div class="toggle-group" id="metricToggle">
+            <button data-metric="vol" class="active">Volume</button>
+            <button data-metric="amt">Amount</button>
+            <button data-metric="asp">ASP</button>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+      <div class="panel chart-panel">
+        <div class="chart-title"><span>Volume by item category</span><span class="hint">click to filter customers</span></div>
+        <div class="chart-wrap"><canvas id="categoryChart"></canvas></div>
+      </div>
+      <div class="panel chart-panel">
+        <div class="chart-title"><span>Volume by customer type</span><span class="hint">click to filter customers</span></div>
+        <div class="chart-wrap"><canvas id="custCategoryChart"></canvas></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2>Top 10 customers, selected week</h2><span class="note" id="top10Note"></span></div>
+    <div id="categoryChip" class="chip" style="display:none;"></div>
+    <div class="panel table-panel">
+      <table class="top10">
+        <thead>
+          <tr>
+            <th data-key="rank">#</th>
+            <th data-key="name">Customer</th>
+            <th data-key="volCurr" class="sorted">Volume (kg)</th>
+            <th data-key="volChange">Δ vs prior wk</th>
+            <th data-key="aspCurr">ASP (Rp)</th>
+            <th data-key="amtCurr">Amount (Rp)</th>
+            <th data-key="pctContrib">% of top 10</th>
+          </tr>
+        </thead>
+        <tbody id="top10Body"></tbody>
+      </table>
+      <div class="empty-note" id="top10Empty" style="display:none;">No transactions in the selected week for this filter combination.</div>
+    </div>
+  </section>
+
+  <footer id="footerNote"></footer>
+</main>
+
+<script>
+/* =========================================================================
+   1. CONFIG
+   ========================================================================= */
+const CONFIG = {
+  sheetId: "1H9cwU97dCUo8Mgw7im_UBq50wr-F7y8O52nWf2ZwUkk",
+  sheetName: "Database",
+  webAppUrl: (function () { try { return localStorage.getItem("wtdWebAppUrl") || ""; } catch (e) { return ""; } })(),
+};
+
+/* =========================================================================
+   2. DATA LOGIC — validated against the source sheet's own computed values.
+   ========================================================================= */
+function pad2(n) { return n < 10 ? "0" + n : "" + n; }
+function monthKey(date) { return date.getFullYear() + "-" + pad2(date.getMonth() + 1); }
+function daysInMonth(year, monthIdx0) { return new Date(year, monthIdx0 + 1, 0).getDate(); }
+
+function weekBucket(date) {
+  const y = date.getFullYear(), m = date.getMonth(), d = date.getDate();
+  const weekNum = Math.ceil(d / 7);
+  const startDay = (weekNum - 1) * 7 + 1;
+  const dim = daysInMonth(y, m);
+  const endDay = Math.min(startDay + 6, dim);
+  const start = new Date(y, m, startDay);
+  const end = new Date(y, m, endDay + 1);
+  const monthAbbr = start.toLocaleString("en-US", { month: "short" });
+  const label = `${monthAbbr} ${startDay} - ${monthAbbr} ${endDay} (Week ${weekNum})`;
+  return { weekNum, monthKey: monthKey(date), start, end, label };
+}
+function monthRange(mKey) { const [y, m] = mKey.split("-").map(Number); return { start: new Date(y, m - 1, 1), end: new Date(y, m, 1) }; }
+function monthLabel(mKey) { const [y, m] = mKey.split("-").map(Number); return new Date(y, m - 1, 1).toLocaleString("en-US", { month: "long", year: "numeric" }); }
+function prevMonthKey(mKey) { const [y, m] = mKey.split("-").map(Number); return monthKey(new Date(y, m - 2, 1)); }
+function weeksInMonth(mKey) {
+  const [y, m] = mKey.split("-").map(Number);
+  const dim = daysInMonth(y, m - 1);
+  const count = Math.ceil(dim / 7);
+  const weeks = [];
+  for (let w = 1; w <= count; w++) weeks.push(weekBucket(new Date(y, m - 1, (w - 1) * 7 + 1)));
+  return weeks;
+}
+function prevWeekBucket(bucket) {
+  if (bucket.weekNum > 1) {
+    const [y, m] = bucket.monthKey.split("-").map(Number);
+    return weekBucket(new Date(y, m - 1, (bucket.weekNum - 2) * 7 + 1));
+  }
+  const pmKey = prevMonthKey(bucket.monthKey);
+  const [py, pm] = pmKey.split("-").map(Number);
+  const dim = daysInMonth(py, pm - 1);
+  const lastWeekStart = (Math.ceil(dim / 7) - 1) * 7 + 1;
+  return weekBucket(new Date(py, pm - 1, lastWeekStart));
+}
+function inRange(d, start, end) { return d >= start && d < end; }
+
+function applyFilters(records, filters) {
+  const { salesman, customer, item, categoryType, categoryValue } = filters || {};
+  return records.filter((r) => {
+    if (salesman && salesman !== "ALL" && r.salesman !== salesman) return false;
+    if (customer && customer !== "ALL" && r.customer !== customer) return false;
+    if (item && item !== "ALL" && r.item !== item) return false;
+    if (categoryType && categoryType !== "ALL") {
+      const val = categoryType === "item" ? r.category : r.custType;
+      if ((val || "Uncategorized") !== categoryValue) return false;
+    }
+    return true;
+  });
+}
+function aggregatePeriod(records, start, end) {
+  let vol = 0, amt = 0;
+  const days = new Set();
+  const invoices = new Set();
+  for (const r of records) {
+    if (inRange(r.date, start, end)) {
+      vol += r.kgs; amt += r.amount; days.add(r.date.toDateString());
+      if (r.invoice) invoices.add(r.invoice);
+    }
+  }
+  const dayCount = days.size;
+  return {
+    vol, amt,
+    asp: vol > 0 ? amt / vol : 0,
+    avgDailyVol: dayCount > 0 ? vol / dayCount : 0,
+    avgDailyAmt: dayCount > 0 ? amt / dayCount : 0,
+    dayCount, salesCount: invoices.size,
+  };
+}
+function pctChange(curr, prev) { if (!prev) return curr ? Infinity : 0; return (curr - prev) / prev; }
+
+function topCustomers(records, start, end, prevStart, prevEnd, n) {
+  n = n || 10;
+  const curr = {}, prev = {};
+  for (const r of records) {
+    if (inRange(r.date, start, end)) {
+      (curr[r.customer] = curr[r.customer] || { vol: 0, amt: 0 });
+      curr[r.customer].vol += r.kgs; curr[r.customer].amt += r.amount;
+    }
+  }
+  for (const r of records) {
+    if (inRange(r.date, prevStart, prevEnd)) {
+      (prev[r.customer] = prev[r.customer] || { vol: 0, amt: 0 });
+      prev[r.customer].vol += r.kgs; prev[r.customer].amt += r.amount;
+    }
+  }
+  const names = Object.keys(curr).sort((a, b) => curr[b].vol - curr[a].vol);
+  const top = names.slice(0, n);
+  const topVolSum = top.reduce((s, name) => s + curr[name].vol, 0);
+  return top.map((name) => {
+    const c = curr[name], p = prev[name] || { vol: 0, amt: 0 };
+    return {
+      name, volCurr: c.vol, volPrev: p.vol, volChange: pctChange(c.vol, p.vol),
+      aspCurr: c.vol > 0 ? c.amt / c.vol : 0, aspPrev: p.vol > 0 ? p.amt / p.vol : 0,
+      amtCurr: c.amt, pctContrib: topVolSum > 0 ? c.vol / topVolSum : 0,
+    };
+  });
+}
+function categoryBreakdown(records, start, end, field) {
+  field = field || "category";
+  const cats = {};
+  for (const r of records) if (inRange(r.date, start, end)) {
+    const key = (field === "category" ? r.category : r.custType) || "Uncategorized";
+    cats[key] = (cats[key] || 0) + r.kgs;
+  }
+  return Object.keys(cats).map((c) => ({ category: c, vol: cats[c] })).sort((a, b) => b.vol - a.vol);
+}
+function dailyTrend(records, start, end) {
+  const byDay = {};
+  for (const r of records) {
+    if (inRange(r.date, start, end)) {
+      const key = r.date.toISOString().slice(0, 10);
+      (byDay[key] = byDay[key] || { vol: 0, amt: 0 });
+      byDay[key].vol += r.kgs; byDay[key].amt += r.amount;
+    }
+  }
+  const days = [];
+  for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+    const key = d.toISOString().slice(0, 10);
+    const v = byDay[key] || { vol: 0, amt: 0 };
+    days.push({ date: key, vol: v.vol, amt: v.amt, asp: v.vol > 0 ? v.amt / v.vol : 0 });
+  }
+  return days;
+}
+
+/* =========================================================================
+   3. DATA LOADING — gviz JSON (live) or Apps Script Web App (JSON), plus a
+      CSV file fallback for offline use / private sheets you'd rather not
+      make link-viewable.
+   ========================================================================= */
+let RECORDS = [];
+let dataSource = "none";
+let refreshTimer = null;
+
+function parseGvizDate(v) {
+  if (typeof v !== "string") return null;
+  const m = v.match(/Date\((\d+),(\d+),(\d+)/);
+  if (!m) return null;
+  return new Date(Number(m[1]), Number(m[2]), Number(m[3]));
+}
+function recordsFromGviz(table) {
+  const cols = table.cols.map((c) => (c.label || c.id || "").trim());
+  const idx = {
+    date: cols.indexOf("Invoice Date"), customer: cols.indexOf("Customer Name"), item: cols.indexOf("Item Description"),
+    unitPrice: cols.indexOf("Unit Price"), kgs: cols.indexOf("Kgs"), amount: cols.indexOf("Amount"),
+    category: cols.indexOf("Item Item Category Name"), custType: cols.indexOf("Customer Customer Type Name"),
+    salesman: cols.indexOf("Salesman Name"), invoice: cols.indexOf("Invoice No."),
+  };
+  const missing = Object.keys(idx).filter((k) => idx[k] === -1);
+  if (missing.length) throw new Error("Missing expected columns: " + missing.join(", "));
+  const out = [];
+  for (const row of table.rows) {
+    const c = row.c;
+    const dateCell = c[idx.date];
+    const date = dateCell ? parseGvizDate(dateCell.v) : null;
+    if (!date) continue;
+    const num = (cell) => (cell && typeof cell.v === "number" ? cell.v : 0);
+    const str = (cell) => (cell && cell.v != null ? String(cell.v).trim() : "");
+    out.push({
+      date, customer: str(c[idx.customer]), item: str(c[idx.item]), unitPrice: num(c[idx.unitPrice]),
+      kgs: num(c[idx.kgs]), amount: num(c[idx.amount]), category: str(c[idx.category]),
+      custType: str(c[idx.custType]), salesman: str(c[idx.salesman]), invoice: str(c[idx.invoice]),
+    });
+  }
+  return out;
+}
+function parseFlexibleDate(str) {
+  if (!str) return null;
+  str = String(str).trim();
+  let m = str.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (m) {
+    let a = Number(m[1]), b = Number(m[2]), y = Number(m[3]);
+    if (a > 12 && b <= 12) return new Date(y, b - 1, a);
+    return new Date(y, a - 1, b);
+  }
+  const d = new Date(str);
+  return isNaN(d) ? null : d;
+}
+function recordsFromCsv(csvText) {
+  const parsed = Papa.parse(csvText, { header: true, skipEmptyLines: true });
+  const out = [];
+  for (const row of parsed.data) {
+    const date = parseFlexibleDate(row["Invoice Date"]);
+    if (!date) continue;
+    const num = (v) => (v === "" || v == null ? 0 : parseFloat(String(v).replace(/,/g, "")) || 0);
+    out.push({
+      date, customer: (row["Customer Name"] || "").trim(), item: (row["Item Description"] || "").trim(),
+      unitPrice: num(row["Unit Price"]), kgs: num(row["Kgs"]), amount: num(row["Amount"]),
+      category: (row["Item Item Category Name"] || "").trim(), custType: (row["Customer Customer Type Name"] || "").trim(),
+      salesman: (row["Salesman Name"] || "").trim(), invoice: (row["Invoice No."] || "").trim(),
+    });
+  }
+  return out;
+}
+function recordsFromWebApp(json) {
+  const raw = Array.isArray(json) ? json : (json && Array.isArray(json.data) ? json.data : null);
+  if (!raw) throw new Error("Apps Script endpoint did not return a JSON array.");
+  return raw.map((x) => ({
+    date: parseFlexibleDate(x.date || x["Invoice Date"]),
+    customer: String(x.customer ?? x["Customer Name"] ?? "").trim(),
+    item: String(x.item ?? x["Item Description"] ?? "").trim(),
+    unitPrice: Number(x.unitPrice ?? x["Unit Price"] ?? 0) || 0,
+    kgs: Number(x.kgs ?? x["Kgs"] ?? 0) || 0,
+    amount: Number(x.amount ?? x["Amount"] ?? 0) || 0,
+    category: String(x.category ?? x["Item Item Category Name"] ?? "").trim(),
+    custType: String(x.custType ?? x["Customer Customer Type Name"] ?? "").trim(),
+    salesman: String(x.salesman ?? x["Salesman Name"] ?? "").trim(),
+    invoice: String(x.invoice ?? x["Invoice No."] ?? "").trim(),
+  })).filter((x) => x.date);
+}
+async function loadLive() {
+  if (CONFIG.webAppUrl) {
+    const res = await fetch(CONFIG.webAppUrl, { cache: "no-store" });
+    if (!res.ok) throw new Error(`Apps Script returned HTTP ${res.status}.`);
+    return recordsFromWebApp(await res.json());
+  }
+  if (!CONFIG.sheetId) throw new Error("No spreadsheet ID configured yet.");
+  const url = `https://docs.google.com/spreadsheets/d/${CONFIG.sheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(CONFIG.sheetName)}`;
+  const res = await fetch(url, { cache: "no-store" });
+  const text = await res.text();
+  const start = text.indexOf("{"), end = text.lastIndexOf("}");
+  if (start === -1 || end === -1) throw new Error("Sheet is not viewable at this link, or the tab name is wrong.");
+  const json = JSON.parse(text.slice(start, end + 1));
+  if (json.status === "error") throw new Error((json.errors && json.errors[0] && json.errors[0].detailed_message) || "Sheet query failed.");
+  return recordsFromGviz(json.table);
+}
+
+/* =========================================================================
+   4. STATE + RENDERING
+   ========================================================================= */
+const state = { month: null, week: null, salesman: "ALL", customer: "ALL", item: "ALL", metric: "vol", categoryType: "ALL", categoryValue: "ALL" };
+let charts = { trend: null, category: null, custCategory: null };
+
+const fmtInt = (n) => Math.round(n || 0).toLocaleString("en-US");
+const fmtVol = (n) => (n / 1000).toLocaleString("en-US", { maximumFractionDigits: 1 }) + " t";
+const fmtRp = (n) => "Rp " + fmtInt(n);
+const fmtRpM = (n) => "Rp " + (n / 1e6).toLocaleString("en-US", { maximumFractionDigits: 1 }) + "M";
+const fmtPct = (n) => (isFinite(n) ? (n >= 0 ? "+" : "") + (n * 100).toFixed(1) + "%" : "—");
+
+function setStatus(kind, text) {
+  document.getElementById("status").className = "status " + kind;
+  document.getElementById("statusText").textContent = text;
+}
+function escapeHtml(s) { return s.replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c])); }
+
+function populateMonthAndSalesmen() {
+  const months = Array.from(new Set(RECORDS.map((r) => monthKey(r.date)))).sort();
+  const monthSel = document.getElementById("f-month");
+  monthSel.innerHTML = months.map((m) => `<option value="${m}">${monthLabel(m)}</option>`).join("");
+  state.month = months[months.length - 1];
+  monthSel.value = state.month;
+  const salesmen = Array.from(new Set(RECORDS.map((r) => r.salesman).filter(Boolean))).sort();
+  const salesmanSel = document.getElementById("f-salesman");
+  salesmanSel.innerHTML = '<option value="ALL">All salesmen</option>' + salesmen.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`).join("");
+}
+function populateWeeks() {
+  const weeks = weeksInMonth(state.month);
+  const weekSel = document.getElementById("f-week");
+  weekSel.innerHTML = weeks.map((w) => `<option value="${w.weekNum}">${w.label}</option>`).join("");
+  const monthRecords = RECORDS.filter((r) => monthKey(r.date) === state.month);
+  let latest = weeks[0];
+  for (const r of monthRecords) { const wb = weekBucket(r.date); if (wb.weekNum > latest.weekNum) latest = wb; }
+  state.week = latest.weekNum;
+  weekSel.value = state.week;
+}
+function populateCustomerAndItem() {
+  const filtered = applyFilters(RECORDS.filter((r) => monthKey(r.date) === state.month), { salesman: state.salesman });
+  const customers = Array.from(new Set(filtered.map((r) => r.customer).filter(Boolean))).sort();
+  const items = Array.from(new Set(filtered.map((r) => r.item).filter(Boolean))).sort();
+  const custSel = document.getElementById("f-customer"), itemSel = document.getElementById("f-item");
+  const prevCust = state.customer, prevItem = state.item;
+  custSel.innerHTML = '<option value="ALL">All customers</option>' + customers.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  itemSel.innerHTML = '<option value="ALL">All items</option>' + items.map((i) => `<option value="${escapeHtml(i)}">${escapeHtml(i)}</option>`).join("");
+  state.customer = customers.includes(prevCust) ? prevCust : "ALL";
+  state.item = items.includes(prevItem) ? prevItem : "ALL";
+  custSel.value = state.customer; itemSel.value = state.item;
+}
+function currentFilteredRecords() {
+  return applyFilters(RECORDS, { salesman: state.salesman, customer: state.customer, item: state.item });
+}
+function deltaClass(v) { return v > 0.001 ? "pos" : v < -0.001 ? "neg" : "flat"; }
+function deltaArrow(v) { return v > 0.001 ? "▲ " : v < -0.001 ? "▼ " : "— "; }
+const TILE_COLORS = {
+  "Volume": "var(--teal)", "Amount": "var(--blue)", "Avg selling price": "var(--amber)",
+  "Avg daily volume": "var(--purple)", "Unique invoices": "var(--pink)", "Trading days": "var(--ink-faint)",
+};
+function kpiTile(label, value, delta) {
+  const cls = delta === null ? "" : deltaClass(delta);
+  const deltaHtml = delta === null ? "" : `<div class="kpi-delta ${cls}">${deltaArrow(delta)}${fmtPct(delta)}</div>`;
+  const color = TILE_COLORS[label] || "var(--blue)";
+  return `<div class="kpi-tile" style="--tile-color:${color}"><div class="kpi-label">${label}</div><div class="kpi-value num">${value}</div>${deltaHtml}</div>`;
+}
+function weekBucketFromState() {
+  const [y, m] = state.month.split("-").map(Number);
+  return weekBucket(new Date(y, m - 1, (state.week - 1) * 7 + 1));
+}
+function renderKpis() {
+  const filtered = currentFilteredRecords();
+  const mRange = monthRange(state.month);
+  const pmKey = prevMonthKey(state.month);
+  const pmRange = monthRange(pmKey);
+  const mCurr = aggregatePeriod(filtered, mRange.start, mRange.end);
+  const mPrev = aggregatePeriod(filtered, pmRange.start, pmRange.end);
+  document.getElementById("monthPeriodLabel").textContent = `${monthLabel(state.month)} vs ${monthLabel(pmKey)}`;
+  document.getElementById("monthKpis").innerHTML = [
+    kpiTile("Volume", fmtVol(mCurr.vol), pctChange(mCurr.vol, mPrev.vol)),
+    kpiTile("Amount", fmtRpM(mCurr.amt), pctChange(mCurr.amt, mPrev.amt)),
+    kpiTile("Avg selling price", fmtRp(mCurr.asp), pctChange(mCurr.asp, mPrev.asp)),
+    kpiTile("Avg daily volume", fmtVol(mCurr.avgDailyVol), pctChange(mCurr.avgDailyVol, mPrev.avgDailyVol)),
+    kpiTile("Unique invoices", fmtInt(mCurr.salesCount), pctChange(mCurr.salesCount, mPrev.salesCount)),
+    kpiTile("Trading days", mCurr.dayCount, null),
+  ].join("");
+
+  const wBucket = weekBucketFromState();
+  const wCurr = aggregatePeriod(filtered, wBucket.start, wBucket.end);
+  const wPrevBucket = prevWeekBucket(wBucket);
+  const wPrev = aggregatePeriod(filtered, wPrevBucket.start, wPrevBucket.end);
+  document.getElementById("weekPeriodLabel").textContent = `${wBucket.label} vs ${wPrevBucket.label}`;
+  document.getElementById("weekKpis").innerHTML = [
+    kpiTile("Volume", fmtVol(wCurr.vol), pctChange(wCurr.vol, wPrev.vol)),
+    kpiTile("Amount", fmtRpM(wCurr.amt), pctChange(wCurr.amt, wPrev.amt)),
+    kpiTile("Avg selling price", fmtRp(wCurr.asp), pctChange(wCurr.asp, wPrev.asp)),
+    kpiTile("Avg daily volume", fmtVol(wCurr.avgDailyVol), pctChange(wCurr.avgDailyVol, wPrev.avgDailyVol)),
+    kpiTile("Unique invoices", fmtInt(wCurr.salesCount), pctChange(wCurr.salesCount, wPrev.salesCount)),
+    kpiTile("Trading days", wCurr.dayCount, null),
+  ].join("");
+
+  const activeFilters = [];
+  if (state.salesman !== "ALL") activeFilters.push(state.salesman.trim());
+  if (state.customer !== "ALL") activeFilters.push(state.customer);
+  if (state.item !== "ALL") activeFilters.push(state.item);
+  document.getElementById("kpiNote").textContent = activeFilters.length ? "Filtered: " + activeFilters.join(" · ") : "";
+
+  return { wBucket, wPrevBucket, filtered };
+}
+
+const CHART_INK = "#9AA7B8";
+const CHART_GRID = "rgba(255,255,255,0.06)";
+const METRIC_COLORS = { vol: "#2FD9C4", amt: "#5B9CFF", asp: "#FBB93D" };
+const METRIC_LABELS = { vol: "Volume (kg)", amt: "Amount (Rp)", asp: "ASP (Rp/kg)" };
+
+function renderTrendChart(filtered, wBucket) {
+  const days = dailyTrend(filtered, wBucket.start, wBucket.end);
+  const labels = days.map((d) => new Date(d.date).toLocaleDateString("en-US", { weekday: "short", day: "numeric" }));
+  const values = days.map((d) => d[state.metric]);
+  document.getElementById("trendTitle").textContent = METRIC_LABELS[state.metric] + " by day";
+  const ctx = document.getElementById("trendChart").getContext("2d");
+  if (charts.trend) charts.trend.destroy();
+  charts.trend = new Chart(ctx, {
+    type: state.metric === "asp" ? "line" : "bar",
+    data: { labels, datasets: [{
+      label: METRIC_LABELS[state.metric], data: values,
+      backgroundColor: METRIC_COLORS[state.metric] + "B3", borderColor: METRIC_COLORS[state.metric],
+      borderWidth: state.metric === "asp" ? 2 : 0, borderRadius: state.metric === "asp" ? 0 : 3,
+      tension: 0.25, fill: false, pointRadius: state.metric === "asp" ? 3 : 0,
+    }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => METRIC_LABELS[state.metric] + ": " + fmtInt(c.parsed.y) } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: CHART_INK, font: { family: "Inter", size: 10.5 } } },
+        y: { grid: { color: CHART_GRID }, ticks: { color: CHART_INK, font: { family: "Inter", size: 10.5 }, callback: (v) => fmtInt(v) }, beginAtZero: state.metric !== "asp" },
+      },
+    },
+  });
+}
+const PALETTE = ["#2FD9C4", "#5B9CFF", "#FBB93D", "#B18CFF", "#FF7FB4", "#6FCF97", "#F2994A", "#7C9FC0"];
+function renderOneCategoryChart(canvasId, chartKey, field, categoryTypeKey, filtered, wBucket) {
+  const cats = categoryBreakdown(filtered, wBucket.start, wBucket.end, field);
+  const ctx = document.getElementById(canvasId).getContext("2d");
+  if (charts[chartKey]) charts[chartKey].destroy();
+  charts[chartKey] = new Chart(ctx, {
+    type: "bar",
+    data: { labels: cats.map((c) => c.category), datasets: [{
+      data: cats.map((c) => c.vol),
+      backgroundColor: cats.map((c, i) => state.categoryType === categoryTypeKey && state.categoryValue === c.category ? "#F1F4F8" : PALETTE[i % PALETTE.length]),
+      borderRadius: 4,
+    }] },
+    options: {
+      indexAxis: "y", responsive: true, maintainAspectRatio: false,
+      onClick: (evt, els) => {
+        if (!els.length) return;
+        const cat = cats[els[0].index].category;
+        if (state.categoryType === categoryTypeKey && state.categoryValue === cat) { state.categoryType = "ALL"; state.categoryValue = "ALL"; }
+        else { state.categoryType = categoryTypeKey; state.categoryValue = cat; }
+        renderAll();
+      },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => fmtVol(c.parsed.x) } } },
+      scales: {
+        x: { grid: { color: CHART_GRID }, ticks: { color: CHART_INK, font: { family: "Inter", size: 10.5 }, callback: (v) => fmtInt(v / 1000) + "t" } },
+        y: { grid: { display: false }, ticks: { color: CHART_INK, font: { family: "Inter", size: 11 } } },
+      },
+    },
+  });
+}
+function renderCategoryChart(filtered, wBucket) {
+  renderOneCategoryChart("categoryChart", "category", "category", "item", filtered, wBucket);
+  renderOneCategoryChart("custCategoryChart", "custCategory", "custType", "custType", filtered, wBucket);
+}
+let sortKey = "volCurr", sortDir = -1;
+function renderTop10(filtered, wBucket, wPrevBucket) {
+  const catFiltered = applyFilters(filtered, { categoryType: state.categoryType, categoryValue: state.categoryValue });
+  let rows = topCustomers(catFiltered, wBucket.start, wBucket.end, wPrevBucket.start, wPrevBucket.end, 10);
+  rows = rows.map((r, i) => ({ ...r, rank: i + 1 }));
+  rows.sort((a, b) => (a[sortKey] > b[sortKey] ? 1 : a[sortKey] < b[sortKey] ? -1 : 0) * sortDir);
+
+  const tbody = document.getElementById("top10Body");
+  const empty = document.getElementById("top10Empty");
+  document.getElementById("top10Note").textContent = wBucket.label;
+
+  const chip = document.getElementById("categoryChip");
+  if (state.categoryType === "ALL") { chip.style.display = "none"; chip.innerHTML = ""; }
+  else {
+    chip.style.display = "inline-flex";
+    chip.innerHTML = `<span>Filtered to category: <strong>${escapeHtml(state.categoryValue)}</strong></span><button type="button" id="clearCategoryBtn">✕</button>`;
+    document.getElementById("clearCategoryBtn").addEventListener("click", () => { state.categoryType = "ALL"; state.categoryValue = "ALL"; renderAll(); });
+  }
+
+  if (!rows.length) { tbody.innerHTML = ""; empty.style.display = "block"; return; }
+  empty.style.display = "none";
+  const maxContrib = Math.max(...rows.map((r) => r.pctContrib), 0.0001);
+  tbody.innerHTML = rows.map((r) => `
+    <tr>
+      <td class="num"><span class="rank-badge">${r.rank}</span></td>
+      <td class="name">${escapeHtml(r.name)}</td>
+      <td class="num">${fmtInt(r.volCurr)}</td>
+      <td class="num ${deltaClass(r.volChange)}">${deltaArrow(r.volChange)}${fmtPct(r.volChange)}</td>
+      <td class="num">${fmtInt(r.aspCurr)}</td>
+      <td class="num">${fmtInt(r.amtCurr)}</td>
+      <td class="num"><span class="contrib-cell"><span class="contrib-bar" style="width:${Math.round((r.pctContrib / maxContrib) * 44)}px"></span>${(r.pctContrib * 100).toFixed(1)}%</span></td>
+    </tr>`).join("");
+}
+function renderAll() {
+  if (!RECORDS.length) return;
+  const { wBucket, wPrevBucket, filtered } = renderKpis();
+  renderTrendChart(filtered, wBucket);
+  renderCategoryChart(filtered, wBucket);
+  renderTop10(filtered, wBucket, wPrevBucket);
+  document.getElementById("footerNote").textContent =
+    `${RECORDS.length.toLocaleString()} rows · source: ${dataSource === "gviz" ? "live, Database tab" : dataSource === "webapp" ? "live, Apps Script" : "uploaded CSV"} · week buckets follow the sheet's 7-day-from-month-start convention · refreshed ${new Date().toLocaleTimeString()}`;
+}
+
+/* =========================================================================
+   5. WIRING
+   ========================================================================= */
+function onDataLoaded(source) {
+  dataSource = source;
+  document.getElementById("setupBanner").style.display = "none";
+  populateMonthAndSalesmen();
+  populateWeeks();
+  populateCustomerAndItem();
+  setStatus("live", `${RECORDS.length.toLocaleString()} rows · ${source === "csv" ? "from uploaded file" : "live"}`);
+  renderAll();
+}
+async function reload() {
+  setStatus("loading", CONFIG.webAppUrl ? "Connecting to Apps Script…" : "Connecting to sheet…");
+  if (location.protocol === "file:") {
+    setStatus("error", "Opened as a local file — this blocks live fetch");
+    document.getElementById("errorText").innerHTML =
+      "This page was opened directly from disk (<code>file://…</code>), and browsers block cross-origin " +
+      "<code>fetch()</code> requests from local files as a security measure — that's almost certainly why " +
+      "you're seeing <strong>\"Failed to fetch\"</strong> rather than a permissions error. " +
+      "Two fixes: <strong>(1)</strong> upload this file to GitHub Pages (or any static host) and open it from " +
+      "there, or <strong>(2)</strong> for local testing, run a tiny local server instead of double-clicking the " +
+      "file — e.g. open a terminal in this file's folder and run <code>python3 -m http.server 8000</code>, then " +
+      "visit <code>http://localhost:8000/wtd-dashboard.html</code>. Until then, <strong>Load CSV…</strong> above " +
+      "will still work fully offline.";
+    document.getElementById("setupBanner").style.display = "block";
+    return;
+  }
+  try {
+    RECORDS = await loadLive();
+    if (!RECORDS.length) throw new Error("Sheet returned no rows.");
+    onDataLoaded(CONFIG.webAppUrl ? "webapp" : "gviz");
+  } catch (err) {
+    setStatus("error", "Couldn't reach the live sheet — see setup notes below");
+    const hint = " If pasting this URL directly into a new browser tab shows a Google sign-in page instead of " +
+      "raw JSON text, the sheet isn't shared broadly enough yet — check Share settings on \"00 - Main Data\".";
+    document.getElementById("errorText").textContent = (err.message || "Unable to load the Database tab.") +
+      (err.message === "Failed to fetch" ? hint : "");
+    document.getElementById("setupBanner").style.display = "block";
+    console.error(err);
+  }
+}
+function scheduleRefresh() {
+  clearTimeout(refreshTimer);
+  const ms = Number(document.getElementById("refreshInterval").value);
+  if (ms > 0) refreshTimer = setTimeout(async () => { await reload(); scheduleRefresh(); }, ms);
+}
+
+document.getElementById("f-month").addEventListener("change", (e) => { state.month = e.target.value; populateWeeks(); populateCustomerAndItem(); renderAll(); });
+document.getElementById("f-week").addEventListener("change", (e) => { state.week = Number(e.target.value); renderAll(); });
+document.getElementById("f-salesman").addEventListener("change", (e) => { state.salesman = e.target.value; populateCustomerAndItem(); renderAll(); });
+document.getElementById("f-customer").addEventListener("change", (e) => { state.customer = e.target.value; renderAll(); });
+document.getElementById("f-item").addEventListener("change", (e) => { state.item = e.target.value; renderAll(); });
+document.getElementById("reloadBtn").addEventListener("click", async () => { await reload(); scheduleRefresh(); });
+document.getElementById("refreshInterval").addEventListener("change", scheduleRefresh);
+document.getElementById("metricToggle").addEventListener("click", (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  state.metric = e.target.dataset.metric;
+  [...e.currentTarget.children].forEach((b) => b.classList.toggle("active", b === e.target));
+  renderAll();
+});
+document.querySelectorAll("table.top10 thead th").forEach((th) => {
+  th.addEventListener("click", () => {
+    const key = th.dataset.key;
+    if (key === "rank") return;
+    sortDir = sortKey === key ? -sortDir : -1;
+    sortKey = key;
+    document.querySelectorAll("table.top10 thead th").forEach((h) => h.classList.remove("sorted"));
+    th.classList.add("sorted");
+    renderAll();
+  });
+});
+document.getElementById("loadCsvBtn").addEventListener("click", () => document.getElementById("csvFile").click());
+document.getElementById("csvFile").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  setStatus("loading", "Reading " + file.name + "…");
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      RECORDS = recordsFromCsv(reader.result);
+      if (!RECORDS.length) throw new Error("No valid rows found in file.");
+      onDataLoaded("csv");
+    } catch (err) {
+      setStatus("error", "Couldn't parse that file");
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+});
+document.getElementById("sheetIdInput").value = CONFIG.sheetId;
+document.getElementById("sheetNameInput").value = CONFIG.sheetName;
+document.getElementById("sheetIdInput").addEventListener("change", (e) => { CONFIG.sheetId = e.target.value.trim(); });
+document.getElementById("sheetNameInput").addEventListener("change", (e) => { CONFIG.sheetName = e.target.value.trim() || "Database"; });
+document.getElementById("webAppUrl").value = CONFIG.webAppUrl;
+document.getElementById("saveWebApp").addEventListener("click", async () => {
+  CONFIG.webAppUrl = document.getElementById("webAppUrl").value.trim();
+  try { localStorage.setItem("wtdWebAppUrl", CONFIG.webAppUrl); } catch (e) {}
+  await reload(); scheduleRefresh();
+});
+
+reload();
+scheduleRefresh();
+</script>
+</body>
+</html>
